@@ -6,7 +6,7 @@ from bosh_dz2.loss import LossComponents, compute_loss, compute_loss_sin, comput
 from bosh_dz2.plant import build_plant
 from bosh_dz2.references import ReferenceData, build_references
 from bosh_dz2.simulation import simulate
-from bosh_dz2.training import train, train_online
+from bosh_dz2.training import train, train_online, train_online_lm
 
 __all__ = [
     'DEVICE',
@@ -23,4 +23,5 @@ __all__ = [
     'simulate',
     'train',
     'train_online',
+    'train_online_lm',
 ]

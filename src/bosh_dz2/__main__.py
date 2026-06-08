@@ -1,5 +1,7 @@
 from bosh_dz2.config import TrainingConfig
-from bosh_dz2.training import train_online
+
+# from bosh_dz2.training import train_online
+from bosh_dz2.training import train_online_lm
 
 """Точка входа: python -m bosh_dz2"""
 
@@ -21,7 +23,8 @@ from bosh_dz2.training import train_online
 
 
 def main() -> None:
-    train_online(cfg=TrainingConfig(n_epoch=2))
+    # train_online(cfg=TrainingConfig(n_epoch=2))
+    train_online_lm(TrainingConfig(n_epoch=50, lm_max_nfev=50))
 
 
 if __name__ == "__main__":

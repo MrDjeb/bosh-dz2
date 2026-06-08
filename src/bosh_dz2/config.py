@@ -29,3 +29,9 @@ class TrainingConfig:
     curves_file: str = "training_curves.png"
     online_weights_file: str = "nn_weights_online.mat"
     online_curves_file: str = "training_curves_online.png"
+    online_lm_weights_file: str = "nn_weights_online_lm.mat"
+    online_lm_curves_file: str = "training_curves_online_lm.png"
+    lm_max_nfev: int | None = 50
+    lm_ftol: float = 1e-8
+    lm_xtol: float = 1e-8
+    lm_gtol: float = 1e-8

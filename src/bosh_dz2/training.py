@@ -15,8 +15,11 @@ from bosh_dz2.loss import (
     compute_loss_sin,
     compute_loss_step,
 )
+from bosh_dz2.lm_optimizer import levenberg_marquardt_step
+from bosh_dz2.params import unpack_params
 from bosh_dz2.plant import build_plant
 from bosh_dz2.references import ReferenceData, build_references
+from bosh_dz2.residuals import residuals_sin, residuals_step
 
 TeacherSample = tuple[Literal["step", "sin"], int]
 
@@ -151,7 +154,7 @@ def train_online(cfg: TrainingConfig | None = None) -> None:
 
         dt = time.time() - t_ep
         if ep <= 5 or ep % 10 == 0:
-            eta = dt * (cfg.n_epoch - ep)
+            eta: float = dt * (cfg.n_epoch - ep)
             print(
                 f"  Эпоха {ep:3d}/{cfg.n_epoch}  J={epoch_loss.total.item():.4f}  "
                 f"[os={epoch_loss.os.item():.4f} set={epoch_loss.set.item():.4f} "
@@ -165,7 +168,73 @@ def train_online(cfg: TrainingConfig | None = None) -> None:
     save_for_simulink(net, cfg.U_LIM, cfg.Ts, cfg.online_weights_file)
     plot_training(J_hist, components_hist, cfg.online_curves_file)
 
+
+def _make_residual_fn(
+    net: torch.nn.Module,
+    plant: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    refs: ReferenceData,
+    cfg: TrainingConfig,
+    kind: Literal["step", "sin"],
+    idx: int,
+):
+    if kind == "step":
+        def residual_fn(w):
+            unpack_params(net, w)
+            return residuals_step(net, plant, refs, cfg, idx)
+    else:
+        def residual_fn(w):
+            unpack_params(net, w)
+            return residuals_sin(net, plant, refs, cfg, idx)
+    return residual_fn
+
+
+def train_online_lm(cfg: TrainingConfig | None = None) -> None:
+    """OSL + Levenberg–Marquardt (scipy.optimize.least_squares, method='lm').
+
+    После каждого эталона от учителя LM минимизирует ||r(w)||² по невязкам
+    текущего примера (до сходимости или lm_max_nfev).
+    """
+    cfg = cfg or TrainingConfig()
+    refs = build_references(cfg)
+    plant = build_plant()
+    net = Controller().to(DEVICE).to(DTYPE)
+
+    _print_header(cfg, refs, "online supervised + Levenberg-Marquardt")
+    print(
+        f"  Примеров за эпоху: {refs.n_step_exp + refs.n_sin_exp} "
+        f"(LM после каждого, max_nfev={cfg.lm_max_nfev})"
+    )
+    print()
+
+    J_hist: list[float] = []
+    components_hist: dict[str, list[float]] = {
+        "os": [], "set": [], "steady": [], "track": [], "ise": [],
+    }
+
+    t_start = time.time()
+    for ep in range(1, cfg.n_epoch + 1):
+        t_ep = time.time()
+
+        for kind, idx in _teacher_samples(refs, shuffle=True):
+            residual_fn = _make_residual_fn(net, plant, refs, cfg, kind, idx)
+            levenberg_marquardt_step(net, residual_fn, cfg)
+
+        with torch.no_grad():
+            epoch_loss = compute_loss(net, plant, refs, cfg)
+        _record_epoch(epoch_loss, J_hist, components_hist)
+
+        dt = time.time() - t_ep
+        if ep <= 5 or ep % 10 == 0:
+            eta = dt * (cfg.n_epoch - ep)
+            print(
+                f"  Эпоха {ep:3d}/{cfg.n_epoch}  J={epoch_loss.total.item():.4f}  "
+                f"[os={epoch_loss.os.item():.4f} set={epoch_loss.set.item():.4f} "
+                f"steady={epoch_loss.steady.item():.5f} "
+                f"track={epoch_loss.track.item():.4f} ise={epoch_loss.ise.item():.4f}]  "
+                f"({dt:.2f}с, ETA {eta:.0f}с)"
+            )
+
     print(f"\nВремя обучения: {time.time() - t_start:.1f} с")
 
-    save_for_simulink(net, cfg.U_LIM, cfg.Ts, cfg.online_weights_file)
-    plot_training(J_hist, components_hist, cfg.online_curves_file)
+    save_for_simulink(net, cfg.U_LIM, cfg.Ts, cfg.online_lm_weights_file)
+    plot_training(J_hist, components_hist, cfg.online_lm_curves_file)
