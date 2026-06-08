@@ -6,6 +6,8 @@ from scipy import signal
 
 from bosh_dz2.config import DEVICE, DTYPE
 
+# Передаточная функция привода
+# W(s) = 2.55 / (s^2 + 0.0473s + 0.0141)
 
 def build_plant():
     num = [2.55]

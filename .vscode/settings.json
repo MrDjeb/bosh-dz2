@@ -1,16 +1,35 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
     },
-    "flake8.enabled": true,
-    "flake8.args": [
-        "--max-line-length=120"
-    ],
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit"
-    },
+    // Настройки Ruff
+
     "python.testing.pytestEnabled": true,
-    "python.testing.unittestEnabled": false
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+
+
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    // Исключения для поиска и автосохранения
+    "search.exclude": {
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/dist": true,
+        "**/build": true
+    },
+    "files.watcherExclude": {
+        "**/.venv/**": true,
+        "**/__pycache__/**": true
+    },
+    // Если используете Jupyter Notebooks
 }
